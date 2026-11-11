@@ -1,9 +1,9 @@
 # PF_zambao_front
 
-Front (React + Vite) do Sistema de Avaliações, com login via Auth0.
+Front (React + Vite) da Base de Conhecimento (artigos), com login via Auth0.
 
-- Qualquer usuário com papel **ADMIN** ou **USER** vê a lista de avaliações.
-- Só **ADMIN** vê o formulário de cadastro.
+- Qualquer usuário com papel **ADMIN** ou **USER** vê a lista de artigos.
+- Só **ADMIN** cadastra e exclui artigos.
 - O papel vem da claim `https://avaliacoes-api/roles` do ID token (Action `add-roles-to-token`
   anexada ao fluxo **Login / Post Login** no Auth0).
 
