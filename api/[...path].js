@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     return
   }
 
-  // /api/avaliacoes?x=1  ->  <BACKEND_URL>/avaliacoes?x=1
+  // /api/artigos?x=1  ->  <BACKEND_URL>/avaliacoes?x=1
   const target = backend.replace(/\/+$/, '') + req.url.replace(/^\/api/, '')
 
   const headers = {}

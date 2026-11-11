@@ -18,21 +18,29 @@ async function request(path, token, options = {}) {
       throw new Error('Você não tem permissão para esta ação (403).')
     }
     if (response.status === 400) {
-      throw new Error('Dados inválidos. Confira os e-mails e a nota (0 a 10).')
+      throw new Error('Dados inválidos. Confira título, descrição, prioridade e e-mail.')
+    }
+    if (response.status === 404) {
+      throw new Error('Artigo não encontrado (404). Talvez já tenha sido removido.')
     }
     throw new Error(`Erro ${response.status} ao falar com o servidor.`)
   }
 
+  if (response.status === 204) return null
   return response.json()
 }
 
-export function listarAvaliacoes(token) {
-  return request('/avaliacoes', token)
+export function listarArtigos(token) {
+  return request('/artigos', token)
 }
 
-export function cadastrarAvaliacao(token, avaliacao) {
-  return request('/avaliacoes', token, {
+export function cadastrarArtigo(token, artigo) {
+  return request('/artigos', token, {
     method: 'POST',
-    body: JSON.stringify(avaliacao),
+    body: JSON.stringify(artigo),
   })
+}
+
+export function removerArtigo(token, id) {
+  return request(`/artigos/${id}`, token, { method: 'DELETE' })
 }

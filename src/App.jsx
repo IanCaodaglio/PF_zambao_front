@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth0 } from '@auth0/auth0-react'
-import { cadastrarAvaliacao, listarAvaliacoes } from './api.js'
+import { cadastrarArtigo, listarArtigos, removerArtigo } from './api.js'
 import { ROLES_CLAIM } from './config.js'
 
-const FORM_VAZIO = { emailAvaliado: '', comentarios: '', nota: 5 }
+const FORM_VAZIO = { titulo: '', descricao: '', prioridade: 'MEDIA' }
 
 export default function App() {
   const {
@@ -16,7 +16,7 @@ export default function App() {
     getAccessTokenSilently,
   } = useAuth0()
 
-  const [avaliacoes, setAvaliacoes] = useState([])
+  const [artigos, setArtigos] = useState([])
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState('')
   const [form, setForm] = useState(FORM_VAZIO)
@@ -31,7 +31,7 @@ export default function App() {
     setErro('')
     try {
       const token = await getAccessTokenSilently()
-      setAvaliacoes(await listarAvaliacoes(token))
+      setArtigos(await listarArtigos(token))
     } catch (e) {
       setErro(e.message)
     } finally {
@@ -49,11 +49,11 @@ export default function App() {
     setErro('')
     try {
       const token = await getAccessTokenSilently()
-      await cadastrarAvaliacao(token, {
-        emailAvaliador: user.email,
-        emailAvaliado: form.emailAvaliado,
-        comentarios: form.comentarios,
-        nota: Number(form.nota),
+      await cadastrarArtigo(token, {
+        titulo: form.titulo,
+        descricao: form.descricao,
+        prioridade: form.prioridade,
+        emailCriador: user.email,
       })
       setForm(FORM_VAZIO)
       await carregar()
@@ -64,12 +64,23 @@ export default function App() {
     }
   }
 
+  async function excluir(id) {
+    setErro('')
+    try {
+      const token = await getAccessTokenSilently()
+      await removerArtigo(token, id)
+      await carregar()
+    } catch (e) {
+      setErro(e.message)
+    }
+  }
+
   if (isLoading) return <main className="container"><p>Carregando...</p></main>
 
   if (authError) {
     return (
       <main className="container">
-        <h1>Sistema de Avaliações</h1>
+        <h1>Base de Conhecimento</h1>
         <p className="erro">Erro de autenticação: {authError.message}</p>
         <button onClick={() => loginWithRedirect()}>Tentar entrar novamente</button>
       </main>
@@ -79,8 +90,8 @@ export default function App() {
   if (!isAuthenticated) {
     return (
       <main className="container">
-        <h1>Sistema de Avaliações</h1>
-        <p>Entre para ver e cadastrar avaliações.</p>
+        <h1>Base de Conhecimento</h1>
+        <p>Entre para ver e cadastrar artigos.</p>
         <button onClick={() => loginWithRedirect()}>Entrar</button>
       </main>
     )
@@ -90,7 +101,7 @@ export default function App() {
     <main className="container">
       <header className="topo">
         <div>
-          <h1>Sistema de Avaliações</h1>
+          <h1>Base de Conhecimento</h1>
           <small>
             {user.email} · {roles.length ? roles.join(', ') : 'sem papel'}
           </small>
@@ -113,37 +124,37 @@ export default function App() {
 
       {isAdmin && (
         <section>
-          <h2>Nova avaliação</h2>
+          <h2>Novo artigo</h2>
           <form onSubmit={enviar}>
             <label>
-              E-mail do avaliado
+              Título
               <input
-                type="email"
                 required
-                value={form.emailAvaliado}
-                onChange={(e) => setForm({ ...form, emailAvaliado: e.target.value })}
+                maxLength={255}
+                value={form.titulo}
+                onChange={(e) => setForm({ ...form, titulo: e.target.value })}
               />
             </label>
             <label>
-              Comentários
+              Descrição
               <textarea
                 required
-                maxLength={1000}
+                maxLength={2000}
                 rows={3}
-                value={form.comentarios}
-                onChange={(e) => setForm({ ...form, comentarios: e.target.value })}
+                value={form.descricao}
+                onChange={(e) => setForm({ ...form, descricao: e.target.value })}
               />
             </label>
             <label>
-              Nota (0 a 10)
-              <input
-                type="number"
-                required
-                min={0}
-                max={10}
-                value={form.nota}
-                onChange={(e) => setForm({ ...form, nota: e.target.value })}
-              />
+              Prioridade
+              <select
+                value={form.prioridade}
+                onChange={(e) => setForm({ ...form, prioridade: e.target.value })}
+              >
+                <option value="BAIXA">BAIXA</option>
+                <option value="MEDIA">MEDIA</option>
+                <option value="ALTA">ALTA</option>
+              </select>
             </label>
             <button type="submit" disabled={enviando}>
               {enviando ? 'Salvando...' : 'Cadastrar'}
@@ -154,28 +165,34 @@ export default function App() {
 
       {temPapel && (
         <section>
-          <h2>Avaliações</h2>
+          <h2>Artigos</h2>
           {carregando && <p>Carregando...</p>}
-          {!carregando && avaliacoes.length === 0 && !erro && <p>Nenhuma avaliação cadastrada.</p>}
-          {avaliacoes.length > 0 && (
+          {!carregando && artigos.length === 0 && !erro && <p>Nenhum artigo cadastrado.</p>}
+          {artigos.length > 0 && (
             <table>
               <thead>
                 <tr>
-                  <th>Data</th>
-                  <th>Avaliador</th>
-                  <th>Avaliado</th>
-                  <th>Nota</th>
-                  <th>Comentários</th>
+                  <th>Título</th>
+                  <th>Descrição</th>
+                  <th>Prioridade</th>
+                  <th>Criador</th>
+                  {isAdmin && <th></th>}
                 </tr>
               </thead>
               <tbody>
-                {avaliacoes.map((a) => (
+                {artigos.map((a) => (
                   <tr key={a.id}>
-                    <td>{a.dataAvaliacao}</td>
-                    <td>{a.emailAvaliador}</td>
-                    <td>{a.emailAvaliado}</td>
-                    <td>{a.nota}</td>
-                    <td>{a.comentarios}</td>
+                    <td>{a.titulo}</td>
+                    <td>{a.descricao}</td>
+                    <td>{a.prioridade}</td>
+                    <td>{a.emailCriador}</td>
+                    {isAdmin && (
+                      <td>
+                        <button className="secundario" onClick={() => excluir(a.id)}>
+                          Excluir
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
